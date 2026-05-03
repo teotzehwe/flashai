@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlashAI – AI-Powered Flashcards</title>
+  <style>
+    @import url('https://fonts.cdnfonts.com/css/akzidenz-grotesk-bq');
+
+    :root {
+      --bg: #09090f;
+      --surface: #111118;
+      --surface2: #18181f;
+      --surface3: #1e1e28;
+      --border: #28283a;
+      --border2: #333348;
+      --accent: #7c6ff7;
+      --accent2: #a78bfa;
+      --accent-glow: rgba(124,111,247,.18);
+      --green: #34d399;
+      --red: #f87171;
+      --yellow: #fbbf24;
+      --text: #ededf5;
+      --muted: #6e6e8e;
+      --muted2: #9898b8;
+      --radius: 16px;
+      --radius-sm: 10px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Akzidenz-Grotesk BQ', 'Akzidenz-Grotesk', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      font-weight: 500;
+      letter-spacing: -0.04em;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ─── Subtle grid background ─── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 48px 48px;
+      opacity: .25;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    main, header { position: relative; z-index: 1; }
+
+    /* ─── Header ─── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      background: rgba(9,9,15,.85);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      font-size: 1.25rem;
+      font-weight: 700;
+      letter-spacing: -0.06em;
+      background: linear-gradient(135deg, #fff 30%, var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .header-badge {
+      font-size: 0.75rem;
+      color: var(--muted);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 12px;
+      letter-spacing: 0;
+    }
+
+    /* ─── Main ─── */
+    main {
+      max-width: 780px;
+      margin: 0 auto;
+      padding: 48px 20px 80px;
+    }
+
+    /* ─── Hero ─── */
+    .hero { text-align: center; margin-bottom: 40px; }
+    .hero h1 {
+      font-size: 2.6rem;
+      font-weight: 700;
+      letter-spacing: -0.06em;
+      line-height: 1.1;
+      background: linear-gradient(160deg, #fff 40%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 10px;
+    }
+    .hero p {
+      color: var(--muted2);
+      font-size: 1rem;
+      letter-spacing: -0.02em;
+    }
+
+    /* ─── Card ─── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+
+    /* ─── Tabs ─── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      margin-bottom: 18px;
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 12px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.88rem;
+      cursor: pointer;
+      font-weight: 500;
+      font-family: inherit;
+      letter-spacing: -0.04em;
+      transition: all .2s;
+      white-space: nowrap;
+    }
+    .tab.active { background: var(--surface3); color: var(--text); border: 1px solid var(--border2); }
+
+    /* ─── Notes tab layout ─── */
+    .notes-wrap { position: relative; }
+    textarea {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      color: var(--text);
+      padding: 14px 16px;
+      font-size: 0.92rem;
+      resize: none;
+      outline: none;
+      font-family: inherit;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      transition: border-color .2s;
+      min-height: 130px;
+      display: block;
+    }
+    textarea:focus { border-color: var(--border2); }
+
+    /* ─── Attach bar (bottom of textarea) ─── */
+    .attach-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-bottom-left-radius: var(--radius-sm);
+      border-bottom-right-radius: var(--radius-sm);
+      padding: 8px 14px;
+      transition: all .2s;
+    }
+    .attach-bar.has-file { border-color: var(--accent); background: rgba(124,111,247,.08); }
+
+    .attach-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      color: var(--muted2);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: -0.03em;
+      padding: 2px 0;
+      transition: color .15s;
+    }
+    .attach-btn:hover { color: var(--accent2); }
+    .attach-btn svg { flex-shrink: 0; }
+
+    .file-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      color: var(--accent2);
+    }
+    .file-chip-name {
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-weight: 600;
+    }
+    .file-chip-size { color: var(--muted); font-size: 0.76rem; }
+    .chip-clear {
+      background: none; border: none;
+      color: var(--muted); cursor: pointer;
+      font-size: 0.9rem; line-height: 1;
+      padding: 2px 4px; border-radius: 4px;
+      transition: color .15s;
+    }
+    .chip-clear:hover { color: var(--red); }
+
+    .attach-hint { font-size: 0.76rem; color: var(--muted); letter-spacing: 0; }
+
+    /* ─── Drop overlay ─── */
+    .notes-wrap.dragover textarea { border-color: var(--accent); opacity: .5; }
+    .notes-wrap.dragover .attach-bar { border-color: var(--accent); background: var(--accent-glow); }
+
+    /* ─── Topic input ─── */
+    input[type="text"] {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 14px 16px;
+      font-size: 0.92rem;
+      outline: none;
+      font-family: inherit;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      transition: border-color .2s;
+    }
+    input[type="text"]:focus { border-color: var(--border2); }
+
+    /* ─── Options row ─── */
+    .options-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 16px;
+      align-items: flex-end;
+      flex-wrap: wrap;
+    }
+    .option-group { flex: 1; min-width: 110px; }
+    .option-group label {
+      display: block;
+      font-size: 0.72rem;
+      color: var(--muted);
+      margin-bottom: 6px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .8px;
+    }
+    select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 0.88rem;
+      font-family: inherit;
+      letter-spacing: -0.03em;
+      outline: none;
+      cursor: pointer;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236e6e8e' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 28px;
+    }
+
+    /* ─── Generate button ─── */
+    .btn-generate {
+      background: linear-gradient(135deg, var(--accent) 0%, #9333ea 100%);
+      color: #fff;
+      border: none;
+      border-radius: var(--radius-sm);
+      padding: 11px 24px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      font-family: inherit;
+      letter-spacing: -0.03em;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s, box-shadow .2s;
+      white-space: nowrap;
+      min-width: 152px;
+      box-shadow: 0 0 0 0 var(--accent-glow);
+    }
+    .btn-generate:hover {
+      opacity: .92;
+      transform: translateY(-1px);
+      box-shadow: 0 8px 24px var(--accent-glow);
+    }
+    .btn-generate:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ─── Alerts ─── */
+    .alert {
+      padding: 11px 16px;
+      border-radius: var(--radius-sm);
+      font-size: 0.86rem;
+      margin-bottom: 16px;
+      display: none;
+      letter-spacing: -0.02em;
+    }
+    .alert.error { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.25); color: #fca5a5; }
+    .alert.info  { background: rgba(124,111,247,.1); border: 1px solid rgba(124,111,247,.25); color: var(--accent2); }
+
+    /* ─── Study section ─── */
+    #study-section { display: none; }
+
+    .study-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 18px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .deck-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--muted2);
+      letter-spacing: -0.02em;
+    }
+    .view-toggle {
+      display: flex;
+      gap: 4px;
+      background: var(--surface2);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      border: 1px solid var(--border);
+    }
+    .view-btn {
+      padding: 6px 16px;
+      border-radius: 7px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-family: inherit;
+      letter-spacing: -0.03em;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all .2s;
+    }
+    .view-btn.active { background: var(--surface3); color: var(--text); border: 1px solid var(--border2); }
+
+    /* ─── Progress ─── */
+    .progress-wrap { margin-bottom: 22px; }
+    .progress-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 7px;
+      letter-spacing: 0;
+    }
+    .progress-track {
+      height: 4px;
+      background: var(--surface3);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      border-radius: 99px;
+      transition: width .4s ease;
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    /* ─── Flip card ─── */
+    .flip-container { perspective: 1400px; margin-bottom: 16px; }
+    .flip-card {
+      width: 100%;
+      min-height: 260px;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform .55s cubic-bezier(.4,0,.2,1);
+      cursor: pointer;
+    }
+    .flip-card.flipped { transform: rotateY(180deg); }
+    .flip-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 36px;
+      text-align: center;
+    }
+    .flip-front {
+      background: var(--surface);
+      border: 1px solid var(--border);
+    }
+    .flip-back {
+      background: linear-gradient(145deg, #1a1030 0%, #0f0f20 100%);
+      border: 1px solid rgba(124,111,247,.4);
+      transform: rotateY(180deg);
+      box-shadow: inset 0 0 60px rgba(124,111,247,.06);
+    }
+    .face-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 18px;
+    }
+    .flip-back .face-label { color: var(--accent2); }
+    .face-text {
+      font-size: 1.7rem;
+      line-height: 1.3;
+      font-weight: 500;
+      letter-spacing: -0.05em;
+    }
+    .flip-hint {
+      text-align: center;
+      font-size: 0.78rem;
+      color: var(--muted);
+      margin-bottom: 18px;
+      letter-spacing: 0;
+    }
+
+    /* ─── MCQ ─── */
+    .mcq-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+    .mcq-question {
+      font-size: 1.5rem;
+      font-weight: 500;
+      line-height: 1.3;
+      letter-spacing: -0.05em;
+      margin-bottom: 22px;
+    }
+    .mcq-options { display: flex; flex-direction: column; gap: 8px; }
+    .mcq-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 13px 15px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      cursor: pointer;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      letter-spacing: -0.02em;
+      transition: border-color .15s, background .15s;
+    }
+    .mcq-option:hover:not(.disabled) { border-color: var(--border2); background: var(--surface3); }
+    .mcq-option.correct { background: rgba(52,211,153,.08); border-color: rgba(52,211,153,.4); color: #6ee7b7; }
+    .mcq-option.wrong   { background: rgba(248,113,113,.08); border-color: rgba(248,113,113,.35); color: #fca5a5; }
+    .mcq-option.disabled { cursor: default; }
+    .opt-label {
+      min-width: 22px; height: 22px;
+      border-radius: 6px;
+      background: var(--surface3);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      flex-shrink: 0;
+      letter-spacing: 0;
+      margin-top: 1px;
+    }
+    .mcq-option.correct .opt-label { background: rgba(52,211,153,.2); border-color: var(--green); color: var(--green); }
+    .mcq-option.wrong   .opt-label { background: rgba(248,113,113,.2); border-color: var(--red);   color: var(--red); }
+
+    /* ─── Nav ─── */
+    .nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .btn-nav {
+      padding: 9px 20px;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-family: inherit;
+      font-weight: 500;
+      letter-spacing: -0.03em;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-nav:hover:not(:disabled) { border-color: var(--border2); color: var(--accent2); }
+    .btn-nav:disabled { opacity: .3; cursor: not-allowed; }
+    .card-counter { font-size: 0.82rem; color: var(--muted); }
+
+    /* ─── Score ─── */
+    #score-section { display: none; text-align: center; padding: 44px 0 28px; }
+    .score-ring {
+      width: 110px; height: 110px;
+      border-radius: 50%;
+      background: conic-gradient(var(--accent) 0%, #9333ea 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 0 40px var(--accent-glow);
+    }
+    .score-ring .snum { font-size: 1.9rem; font-weight: 700; line-height: 1; }
+    .score-ring .sden { font-size: 0.78rem; color: rgba(255,255,255,.6); margin-top: 2px; }
+    .score-msg { font-size: 1.15rem; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 6px; }
+    .score-sub { font-size: 0.86rem; color: var(--muted2); margin-bottom: 26px; letter-spacing: 0; }
+    .btn-restart {
+      padding: 10px 24px;
+      border-radius: var(--radius-sm);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-family: inherit;
+      letter-spacing: -0.03em;
+      cursor: pointer;
+      transition: border-color .15s, color .15s;
+    }
+    .btn-restart:hover { border-color: var(--border2); color: var(--accent2); }
+
+    /* ─── Spinner ─── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 7px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ─── File input hidden ─── */
+    #file-input { display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FlashAI</div>
+  <div class="header-badge">Powered by Claude</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Study smarter with AI</h1>
+    <p>Paste notes, upload any file, or enter a topic — Claude builds your deck.</p>
+  </div>
+
+  <!-- ── Input card ── -->
+  <div class="card">
+    <div class="tabs">
+      <button class="tab active" id="tab-notes" onclick="switchTab('notes')">Notes</button>
+      <button class="tab" id="tab-topic" onclick="switchTab('topic')">Topic</button>
+    </div>
+
+    <!-- Notes tab -->
+    <div id="input-notes">
+      <div class="notes-wrap" id="notes-wrap"
+        ondragover="handleDragOver(event)"
+        ondragleave="handleDragLeave(event)"
+        ondrop="handleDrop(event)">
+        <textarea id="notes-input" placeholder="Paste your study notes, textbook excerpt, or any text here…" rows="6"></textarea>
+        <div class="attach-bar" id="attach-bar">
+          <!-- No file selected -->
+          <div id="attach-empty">
+            <button class="attach-btn" onclick="document.getElementById('file-input').click()">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M13.5 8.5L7.5 14.5C6.1 15.9 3.9 15.9 2.5 14.5C1.1 13.1 1.1 10.9 2.5 9.5L9 3C9.9 2.1 11.4 2.1 12.3 3C13.2 3.9 13.2 5.4 12.3 6.3L6.3 12.3C5.8 12.8 5 12.8 4.5 12.3C4 11.8 4 11 4.5 10.5L9.5 5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+              Attach a file
+            </button>
+          </div>
+          <!-- File selected -->
+          <div id="attach-filled" style="display:none" class="file-chip">
+            <span id="file-icon-chip">📄</span>
+            <span class="file-chip-name" id="file-name-chip"></span>
+            <span class="file-chip-size" id="file-size-chip"></span>
+            <button class="chip-clear" onclick="clearFile()" title="Remove">✕</button>
+          </div>
+          <span class="attach-hint" id="attach-hint">PDF · DOCX · images · audio · video</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Topic tab -->
+    <div id="input-topic" style="display:none">
+      <input type="text" id="topic-input" placeholder="e.g. Mitosis, World War II, Quadratic Equations…" />
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="file-input"
+      accept=".pdf,.doc,.docx,.txt,.md,.html,.htm,.csv,.json,.xml,.yaml,.yml,.rtf,.jpg,.jpeg,.png,.gif,.webp,.mp3,.wav,.m4a,.ogg,.aac,.mp4,.mov,.avi,.webm,.mkv"
+      onchange="handleFileSelect(this.files[0])">
+
+    <div class="options-row">
+      <div class="option-group">
+        <label>Cards</label>
+        <select id="num-cards">
+          <option value="5">5</option>
+          <option value="10" selected>10</option>
+          <option value="15">15</option>
+          <option value="20">20</option>
+        </select>
+      </div>
+      <div class="option-group">
+        <label>Difficulty</label>
+        <select id="difficulty">
+          <option value="beginner">Beginner</option>
+          <option value="intermediate" selected>Intermediate</option>
+          <option value="advanced">Advanced</option>
+        </select>
+      </div>
+      <button class="btn-generate" id="gen-btn" onclick="generateCards()">Generate ✦</button>
+    </div>
+  </div>
+
+  <div class="alert error" id="error-msg"></div>
+  <div class="alert info"  id="info-msg"></div>
+
+  <!-- ── Study section ── -->
+  <div id="study-section">
+    <div class="study-header">
+      <span class="deck-title" id="deck-title">Your Deck</span>
+      <div class="view-toggle">
+        <button class="view-btn active" id="vbtn-flip" onclick="switchView('flip')">Flip Cards</button>
+        <button class="view-btn" id="vbtn-mcq"  onclick="switchView('mcq')">MCQ Quiz</button>
+      </div>
+    </div>
+
+    <div class="progress-wrap">
+      <div class="progress-label">
+        <span id="progress-text">Card 1 of 10</span>
+        <span id="progress-pct">10%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:10%"></div>
+      </div>
+    </div>
+
+    <!-- Flip view -->
+    <div id="flip-view">
+      <div class="flip-container">
+        <div class="flip-card" id="flip-card" onclick="flipCard()">
+          <div class="flip-face flip-front">
+            <div class="face-label">Question</div>
+            <div class="face-text" id="flip-question"></div>
+          </div>
+          <div class="flip-face flip-back">
+            <div class="face-label">Answer</div>
+            <div class="face-text" id="flip-answer"></div>
+          </div>
+        </div>
+      </div>
+      <p class="flip-hint">Click card to flip · Space to flip · ← → to navigate</p>
+    </div>
+
+    <!-- MCQ view -->
+    <div id="mcq-view" style="display:none">
+      <div class="mcq-card">
+        <div class="mcq-question" id="mcq-question"></div>
+        <div class="mcq-options" id="mcq-options"></div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-row">
+      <button class="btn-nav" id="btn-prev" onclick="navigate(-1)">← Prev</button>
+      <span class="card-counter" id="card-counter">1 / 10</span>
+      <button class="btn-nav" id="btn-next" onclick="navigate(1)">Next →</button>
+    </div>
+
+    <!-- Score (MCQ) -->
+    <div id="score-section">
+      <div class="score-ring">
+        <span class="snum" id="score-num">0</span>
+        <span class="sden" id="score-den">/ 10</span>
+      </div>
+      <div class="score-msg" id="score-msg">Quiz complete!</div>
+      <div class="score-sub" id="score-sub"></div>
+      <button class="btn-restart" onclick="restartMCQ()">↺ Retake Quiz</button>
+    </div>
+  </div>
+</main>
+
+<script>
+  // ── State ──
+  let cards = [], currentIndex = 0, currentView = 'flip', currentTab = 'notes';
+  let mcqAnswered = [], mcqScore = 0;
+  let uploadedFile = null;
+
+  // ── Tab ──
+  function switchTab(tab) {
+    currentTab = tab;
+    ['notes','topic'].forEach(t => {
+      document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+      document.getElementById('input-' + t).style.display = t === tab ? '' : 'none';
+    });
+  }
+
+  // ── File utils ──
+  function fileEmoji(mime, name) {
+    if (mime.startsWith('image/'))  return '🖼️';
+    if (mime.startsWith('audio/'))  return '🎵';
+    if (mime.startsWith('video/'))  return '🎬';
+    if (mime === 'application/pdf') return '📕';
+    if (mime.includes('word') || /\.docx?$/i.test(name)) return '📝';
+    if (/\.csv$/i.test(name))  return '📊';
+    if (/\.html?$/i.test(name)) return '🌐';
+    return '📄';
+  }
+  function fmtSize(b) {
+    return b < 1024 ? b + ' B' : b < 1048576 ? (b/1024).toFixed(1) + ' KB' : (b/1048576).toFixed(1) + ' MB';
+  }
+
+  // ── File select ──
+  function handleFileSelect(file) {
+    if (!file) return;
+    if (file.size > 25 * 1024 * 1024) { showError(`File too large (${fmtSize(file.size)}). Max 25 MB.`); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const base64 = e.target.result.split(',')[1];
+      uploadedFile = { base64, mimeType: file.type, fileName: file.name, size: file.size };
+      document.getElementById('attach-empty').style.display = 'none';
+      document.getElementById('attach-filled').style.display = 'flex';
+      document.getElementById('attach-hint').style.display = 'none';
+      document.getElementById('file-icon-chip').textContent = fileEmoji(file.type, file.name);
+      document.getElementById('file-name-chip').textContent = file.name;
+      document.getElementById('file-size-chip').textContent = fmtSize(file.size);
+      document.getElementById('attach-bar').classList.add('has-file');
+      hideAlerts();
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearFile() {
+    uploadedFile = null;
+    document.getElementById('file-input').value = '';
+    document.getElementById('attach-empty').style.display = '';
+    document.getElementById('attach-filled').style.display = 'none';
+    document.getElementById('attach-hint').style.display = '';
+    document.getElementById('attach-bar').classList.remove('has-file');
+  }
+
+  // ── Drag & drop ──
+  function handleDragOver(e) {
+    e.preventDefault();
+    document.getElementById('notes-wrap').classList.add('dragover');
+  }
+  function handleDragLeave(e) {
+    if (!document.getElementById('notes-wrap').contains(e.relatedTarget))
+      document.getElementById('notes-wrap').classList.remove('dragover');
+  }
+  function handleDrop(e) {
+    e.preventDefault();
+    document.getElementById('notes-wrap').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) handleFileSelect(file);
+  }
+
+  // ── Generate ──
+  async function generateCards() {
+    const numCards = document.getElementById('num-cards').value;
+    const difficulty = document.getElementById('difficulty').value;
+    let payload = { type: currentTab, numCards, difficulty };
+    let deckTitle;
+
+    if (currentTab === 'notes') {
+      const text = document.getElementById('notes-input').value.trim();
+      if (!text && !uploadedFile) { showError('Paste some notes or attach a file.'); return; }
+      if (uploadedFile) {
+        payload.type     = 'file';
+        payload.content  = uploadedFile.base64;
+        payload.mimeType = uploadedFile.mimeType;
+        payload.fileName = uploadedFile.fileName;
+        deckTitle = uploadedFile.fileName;
+      } else {
+        payload.content = text;
+        deckTitle = 'From your notes';
+      }
+    } else {
+      const topic = document.getElementById('topic-input').value.trim();
+      if (!topic) { showError('Enter a topic first.'); return; }
+      payload.content = topic;
+      deckTitle = topic;
+    }
+
+    const btn = document.getElementById('gen-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span>Generating…';
+    hideAlerts();
+
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || `Server error ${res.status}`);
+      }
+      const parsed = await res.json();
+      cards = parsed.cards.map(c => ({ ...c, shuffledOptions: shuffleOpts(c.options) }));
+      currentIndex = 0;
+      resetMCQ();
+      document.getElementById('deck-title').textContent = deckTitle;
+      document.getElementById('study-section').style.display = '';
+      document.getElementById('score-section').style.display = 'none';
+      switchView('flip');
+      showInfo(`✓ ${cards.length} cards generated`);
+    } catch (e) {
+      showError(e.message || 'Something went wrong.');
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = 'Generate ✦';
+    }
+  }
+
+  // ── Helpers ──
+  function shuffleOpts(options) {
+    const correct = options[0];
+    const shuffled = [...options].sort(() => Math.random() - .5);
+    return { options: shuffled, correctIndex: shuffled.indexOf(correct) };
+  }
+
+  // ── View ──
+  function switchView(view) {
+    currentView = view;
+    document.getElementById('vbtn-flip').classList.toggle('active', view === 'flip');
+    document.getElementById('vbtn-mcq').classList.toggle('active',  view === 'mcq');
+    document.getElementById('flip-view').style.display = view === 'flip' ? '' : 'none';
+    document.getElementById('mcq-view').style.display  = view === 'mcq'  ? '' : 'none';
+    document.getElementById('score-section').style.display = 'none';
+    view === 'mcq' ? (resetMCQ(), renderMCQ()) : renderFlip();
+    updateProgress();
+  }
+
+  // ── Flip ──
+  function renderFlip() {
+    if (!cards.length) return;
+    const c = cards[currentIndex];
+    document.getElementById('flip-question').textContent = c.question;
+    document.getElementById('flip-answer').textContent   = c.answer;
+    document.getElementById('flip-card').classList.remove('flipped');
+  }
+  function flipCard() {
+    document.getElementById('flip-card').classList.toggle('flipped');
+  }
+
+  // ── MCQ ──
+  function resetMCQ() { mcqAnswered = new Array(cards.length).fill(null); mcqScore = 0; }
+
+  function renderMCQ() {
+    if (!cards.length) return;
+    const c = cards[currentIndex];
+    const { options, correctIndex } = c.shuffledOptions;
+    const answered = mcqAnswered[currentIndex];
+    document.getElementById('mcq-question').textContent = c.question;
+    const container = document.getElementById('mcq-options');
+    container.innerHTML = '';
+    options.forEach((opt, i) => {
+      const div = document.createElement('div');
+      div.className = 'mcq-option';
+      if (answered !== null) {
+        div.classList.add('disabled');
+        if (i === correctIndex) div.classList.add('correct');
+        else if (i === answered) div.classList.add('wrong');
+      }
+      div.innerHTML = `<span class="opt-label">${String.fromCharCode(65+i)}</span><span>${opt}</span>`;
+      if (answered === null) div.addEventListener('click', () => answerMCQ(i, correctIndex));
+      container.appendChild(div);
+    });
+  }
+
+  function answerMCQ(chosen, correct) {
+    mcqAnswered[currentIndex] = chosen;
+    if (chosen === correct) mcqScore++;
+    renderMCQ();
+    const allDone = mcqAnswered.every(a => a !== null);
+    if (allDone && currentIndex === cards.length - 1) setTimeout(showScore, 800);
+    else setTimeout(() => navigate(1), chosen === correct ? 700 : 1200);
+  }
+
+  function showScore() {
+    document.getElementById('mcq-view').style.display = 'none';
+    document.getElementById('score-section').style.display = '';
+    const pct = Math.round(mcqScore / cards.length * 100);
+    document.getElementById('score-num').textContent = mcqScore;
+    document.getElementById('score-den').textContent = `/ ${cards.length}`;
+    document.getElementById('score-msg').textContent = pct >= 80 ? '🎉 Excellent!' : pct >= 50 ? '👍 Good effort!' : '📚 Keep studying!';
+    document.getElementById('score-sub').textContent = `${mcqScore} of ${cards.length} correct · ${pct}%`;
+  }
+
+  function restartMCQ() {
+    resetMCQ(); currentIndex = 0;
+    document.getElementById('score-section').style.display = 'none';
+    document.getElementById('mcq-view').style.display = '';
+    renderMCQ(); updateProgress();
+  }
+
+  // ── Nav ──
+  function navigate(dir) {
+    const n = currentIndex + dir;
+    if (n < 0 || n >= cards.length) return;
+    currentIndex = n;
+    currentView === 'flip' ? renderFlip() : (document.getElementById('mcq-view').style.display = '', renderMCQ());
+    updateProgress();
+  }
+
+  function updateProgress() {
+    const total = cards.length, cur = currentIndex + 1;
+    const pct = Math.round(cur / total * 100);
+    document.getElementById('progress-text').textContent = `Card ${cur} of ${total}`;
+    document.getElementById('progress-pct').textContent  = pct + '%';
+    document.getElementById('progress-fill').style.width = pct + '%';
+    document.getElementById('card-counter').textContent  = `${cur} / ${total}`;
+    document.getElementById('btn-prev').disabled = currentIndex === 0;
+    document.getElementById('btn-next').disabled = currentIndex === total - 1;
+  }
+
+  // ── Alerts ──
+  function showError(msg) {
+    const e = document.getElementById('error-msg'); e.textContent = msg; e.style.display = '';
+    document.getElementById('info-msg').style.display = 'none';
+  }
+  function showInfo(msg) {
+    const e = document.getElementById('info-msg'); e.textContent = msg; e.style.display = '';
+    document.getElementById('error-msg').style.display = 'none';
+  }
+  function hideAlerts() {
+    document.getElementById('error-msg').style.display = 'none';
+    document.getElementById('info-msg').style.display  = 'none';
+  }
+
+  // ── Keyboard ──
+  document.addEventListener('keydown', e => {
+    if (!cards.length) return;
+    if (e.key === 'ArrowRight') navigate(1);
+    if (e.key === 'ArrowLeft')  navigate(-1);
+    if (e.key === ' ' && currentView === 'flip') { e.preventDefault(); flipCard(); }
+  });
+</script>
+</body>
+</html>
