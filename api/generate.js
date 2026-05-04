@@ -1,6 +1,6 @@
-const mammoth = require('mammoth');
+import mammoth from 'mammoth';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -148,4 +148,4 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Something went wrong.' });
   }
-};
+}
