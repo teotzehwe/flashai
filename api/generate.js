@@ -1,15 +1,6 @@
-import mammoth from 'mammoth';
+const mammoth = require('mammoth');
 
-// Increase body size limit for file uploads (base64 encoded)
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
-};
-
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -43,7 +34,6 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
     } else if (type === 'file') {
       const mime = (mimeType || '').toLowerCase();
 
-      // ── PDF — Claude native document support ──
       if (mime === 'application/pdf') {
         extraHeaders['anthropic-beta'] = 'pdfs-2024-09-25';
         messages = [{
@@ -54,7 +44,6 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
           ]
         }];
 
-      // ── Images — Claude vision ──
       } else if (['image/jpeg','image/jpg','image/png','image/gif','image/webp'].includes(mime)) {
         const safeMime = mime === 'image/jpg' ? 'image/jpeg' : mime;
         messages = [{
@@ -65,7 +54,6 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
           ]
         }];
 
-      // ── DOCX / DOC — extract text with mammoth ──
       } else if (
         mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
         mime === 'application/msword' ||
@@ -82,24 +70,19 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
           content: `${instruction}\n\nContent from "${fileName}":\n${result.value.trim()}`
         }];
 
-      // ── Plain text formats — decode base64 to string ──
       } else if (
         mime.startsWith('text/') ||
-        ['application/json', 'application/javascript', 'application/xml',
-         'application/x-yaml', 'application/x-markdown'].includes(mime) ||
+        ['application/json','application/javascript','application/xml'].includes(mime) ||
         /\.(txt|md|html|htm|csv|json|xml|yaml|yml|js|ts|py|java|c|cpp|css|rtf)$/i.test(fileName || '')
       ) {
         const text = Buffer.from(content, 'base64').toString('utf-8');
-        if (!text.trim()) {
-          return res.status(400).json({ error: 'The file appears to be empty.' });
-        }
+        if (!text.trim()) return res.status(400).json({ error: 'The file appears to be empty.' });
         messages = [{
           role: 'user',
           content: `${instruction}\n\nContent from "${fileName}":\n${text.trim()}`
         }];
 
-      // ── Audio — Claude native audio support ──
-      } else if (mime.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|aac|flac|weba)$/i.test(fileName || '')) {
+      } else if (mime.startsWith('audio/') || /\.(mp3|wav|m4a|ogg|aac|flac)$/i.test(fileName || '')) {
         const audioMime = mime.startsWith('audio/') ? mime : 'audio/mpeg';
         messages = [{
           role: 'user',
@@ -109,7 +92,6 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
           ]
         }];
 
-      // ── Video — Claude native video support ──
       } else if (mime.startsWith('video/') || /\.(mp4|mov|avi|webm|mkv|m4v)$/i.test(fileName || '')) {
         const videoMime = mime.startsWith('video/') ? mime : 'video/mp4';
         messages = [{
@@ -120,7 +102,6 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
           ]
         }];
 
-      // ── Fallback — try to decode as text ──
       } else {
         try {
           const text = Buffer.from(content, 'base64').toString('utf-8');
@@ -167,4 +148,4 @@ IMPORTANT: options[0] MUST be the correct answer. Make wrong options plausible b
   } catch (e) {
     return res.status(500).json({ error: e.message || 'Something went wrong.' });
   }
-}
+};
