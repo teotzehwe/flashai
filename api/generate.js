@@ -10,7 +10,19 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'API key not configured on server.' });
   }
 
-  const { content, type, mimeType, fileName, numCards, difficulty } = req.body;
+  // Explicitly parse body — Vercel doesn't auto-parse for plain serverless functions
+  let body = req.body;
+  if (!body || typeof body === 'string' || Object.keys(body).length === 0) {
+    try {
+      const chunks = [];
+      for await (const chunk of req) chunks.push(chunk);
+      body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    } catch {
+      return res.status(400).json({ error: 'Could not parse request body.' });
+    }
+  }
+
+  const { content, type, mimeType, fileName, numCards, difficulty } = body;
 
   if (!numCards || !difficulty) {
     return res.status(400).json({ error: 'Missing required fields.' });
